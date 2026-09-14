@@ -1,1 +1,266 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
 
+body {
+    background: transparent;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+    color: #e0e0e0;
+}
+
+.hyper-wrapper {
+    display: none; /* Só aparece quando o comando do client.lua acionar a NUI */
+    width: 820px;
+    height: 520px;
+    background: #111113;
+    border: 1px solid #27272a;
+    border-radius: 8px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.7);
+    display: flex;
+    overflow: hidden;
+}
+
+/* Sidebar */
+.hyper-sidebar {
+    width: 220px;
+    background: #18181b;
+    border-right: 1px solid #27272a;
+    display: flex;
+    flex-direction: column;
+    padding: 15px;
+}
+
+.logo-area h1 {
+    font-size: 20px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: 1px;
+}
+
+.logo-area span {
+    font-size: 10px;
+    color: #71717a;
+    text-transform: uppercase;
+}
+
+.menu-section-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #52525b;
+    margin: 15px 0 5px 5px;
+    font-weight: bold;
+}
+
+.menu-list {
+    list-style: none;
+}
+
+.menu-list li {
+    padding: 10px 12px;
+    font-size: 13px;
+    color: #a1a1aa;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-bottom: 3px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.menu-list li:hover, .menu-list li.active {
+    background: #27272a;
+    color: #fff;
+}
+
+.user-profile {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #27272a;
+}
+
+.user-profile .avatar {
+    width: 35px;
+    height: 35px;
+    background: #27272a;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #a1a1aa;
+}
+
+.user-info .username {
+    display: block;
+    font-size: 13px;
+    font-weight: bold;
+    color: #fff;
+}
+
+.user-info .role {
+    font-size: 10px;
+    color: #3b82f6;
+}
+
+/* Content Area */
+.hyper-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #121214;
+}
+
+.top-bar {
+    height: 50px;
+    border-bottom: 1px solid #27272a;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+}
+
+.sub-tabs {
+    display: flex;
+    gap: 10px;
+}
+
+.sub-tab-btn {
+    background: transparent;
+    border: none;
+    color: #71717a;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 4px;
+}
+
+.sub-tab-btn.active {
+    background: #27272a;
+    color: #fff;
+}
+
+.search-box {
+    background: #18181b;
+    border: 1px solid #27272a;
+    border-radius: 6px;
+    padding: 5px 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.search-box input {
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 12px;
+    outline: none;
+}
+
+/* Panes */
+.tab-pane {
+    display: none;
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+.pane-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.card-box {
+    background: #18181b;
+    border: 1px solid #27272a;
+    border-radius: 6px;
+    padding: 15px;
+}
+
+.card-box h3 {
+    font-size: 13px;
+    margin-bottom: 12px;
+    color: #e4e4e7;
+    border-bottom: 1px solid #27272a;
+    padding-bottom: 5px;
+}
+
+.toggle-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 12px;
+    color: #a1a1aa;
+}
+
+/* Switch UI */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 34px;
+    height: 18px;
+}
+
+.switch input { 
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #27272a;
+    transition: .3s;
+    border-radius: 18px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 12px;
+    width: 12px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: #2563eb;
+}
+
+input:checked + .slider:before {
+    transform: translateX(16px);
+}
+
+.action-btn {
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    font-weight: 600;
+    width: 100%;
+}
