@@ -571,6 +571,9 @@ end
 
 -- ------------------------------------------------------------- desenho
 local function rect(x, y, w, h, r, g, b, a)
+    if a <= 0 then return end
+    if a > 255 then a = 255 end
+    if w < 0 or h < 0 then return end
     DrawRect(x + w / 2, y + h / 2, w, h, r, g, b, a)
 end
 
@@ -587,76 +590,126 @@ local function text(x, y, s, scale, r, g, b, right, wrap)
     EndTextCommandDisplayText(x, y)
 end
 
-local MENU_W = 460
-local ROW_H = 33
-local HEAD_H = 44
+local LEFT_W  = 170
+local RIGHT_W = 380
+local TOTAL_W = LEFT_W + RIGHT_W
+local HEAD_H  = 46
+local ITEM_H  = 34
+local CAT_H   = 31
+local FOOT_H  = 26
 
-local function drawMenu(x0, y0, items, title, sc, cu)
-    local resW, resH = GetActiveScreenResolution()
-    local maxRows = math.min(C.maxVisible, #items)
-    local h = HEAD_H + maxRows * ROW_H + 6
-    if y0 + h > resH then y0 = resH - h - 10 end
+-- brilho ao redor do item selecionado
+local function glow(x, y, w, h, r, g, b, a)
+    rect(x - 4, y - 4, w + 8, h + 8, r, g, b, math.floor(a * 0.30))
+    rect(x - 1, y - 1, w + 2, h + 2, r, g, b, math.floor(a * 0.50))
+end
 
-    -- fundo
-    rect(x0, y0, MENU_W, h, 6, 10, 18, 210)
-    rect(x0, y0, MENU_W, HEAD_H, 10, 14, 26, 240)
-    rect(x0, y0 + HEAD_H - 3, MENU_W, 3, A.r, A.g, A.b, 255)
+local function drawHeader(x0, y0, title, w)
+    rect(x0, y0, w, HEAD_H, 9, 12, 22, 248)
+    -- borda accent com pulso
+    local p = 0.55 + 0.45 * math.sin(GetGameTimer() / 420)
+    rect(x0, y0 + HEAD_H - 3, w, 3, A.r, A.g, A.b, math.floor(150 + 105 * p))
+    text(x0 + 14, y0 + 10, 'HYPER MENU', 0.45, A.r, A.g, A.b)
+    text(x0 + 14, y0 + 27, title:upper(), 0.27, 165, 180, 200)
+    text(x0 + w - 12, y0 + 10, 'v' .. (C.github.currentVersion or ''), 0.26,
+         110, 125, 150, true, { x0, x0 + w - 12 })
+end
 
-    -- titulo
-    SetTextFont(4)
-    SetTextProportional(1)
-    SetTextScale(0.0, 0.42)
-    SetTextColour(255, 255, 255, 255)
-    SetTextDropShadow(1, 0, 0, 0, 200)
-    BeginTextCommandDisplayText('STRING')
-    AddTextComponentSubstringPlayerName('HYPER MENU ~b~' .. title .. '~w~')
-    EndTextCommandDisplayText(x0 + 10, y0 + 12)
-
-    -- items (com scroll)
-    for i = sc + 1, math.min(#items, sc + maxRows) do
-        local y = y0 + HEAD_H + (i - sc - 1) * ROW_H
-        local it = items[i]
-        if i - 1 == cu then
-            rect(x0 + 3, y, MENU_W - 6, ROW_H, A.r, A.g, A.b, 70)
-            rect(x0 + 3, y, 3, ROW_H, A.r, A.g, A.b, 255)
-        end
-        text(x0 + 14, y + 9, it.label, 0.34, 255, 255, 255)
-
-        -- controle da direita
-        local wrap = { x0 + 60, x0 + MENU_W - 10 }
-        if it.kind == 'toggle' then
-            local on = it.state
-            text(x0 + MENU_W - 16, y + 9, on and '[ON]' or '[OFF]', 0.30,
-                 on and 52 or 140, on and 211 or 150, on and 153 or 170, true, wrap)
-        elseif it.kind == 'cycle' then
-            local opts = it.cfg.options
-            local cur = opts[it.cfg.value]
-            local label = cur and cur[1] or ''
-            text(x0 + MENU_W - 16, y + 9, '< ' .. label .. ' >', 0.30, 120, 180, 255, true, wrap)
-        elseif it.kind == 'list' then
-            text(x0 + MENU_W - 16, y + 9, '>>', 0.30, 120, 180, 255, true, wrap)
-        elseif it.kind == 'action' then
-            text(x0 + MENU_W - 16, y + 9, '>>', 0.30, 200, 210, 225, true, wrap)
+local function drawCatPanel(x0, y0, h)
+    rect(x0, y0, LEFT_W, h, 8, 11, 20, 235)
+    for i, cat in ipairs(Menu.categories) do
+        local y = y0 + (i - 1) * CAT_H
+        local sel = i == Menu.catIdx
+        if sel then
+            rect(x0, y, LEFT_W, CAT_H, A.r, A.g, A.b, 55)
+            rect(x0, y, 3, CAT_H, A.r, A.g, A.b, 255)
+            text(x0 + 12, y + 7, cat.name, 0.31, 255, 255, 255)
+        else
+            text(x0 + 12, y + 7, cat.name, 0.31, 138, 150, 170)
+            text(x0 + LEFT_W - 10, y + 7, '>>', 0.27, 60, 70, 86, true, { x0, x0 + LEFT_W - 10 })
         end
     end
+end
 
-    -- rodape
-    text(x0 + 10, y0 + h - 18, 'SETAS/ENTER/BACKSPACE', 0.26, 120, 134, 156)
-    text(x0 + MENU_W - 10, y0 + h - 18, sc > 0 and '>>' or '', 0.26, 120, 134, 156, true)
+local function drawItems(x0, y0, items, sc, cu, iw)
+    local wrap = { x0 + 40, x0 + iw - 12 }
+    local maxRows = math.min(C.maxVisible, #items)
+    for i = sc + 1, sc + maxRows do
+        local it = items[i]
+        if not it then break end
+        local y = y0 + (i - sc - 1) * ITEM_H
+        local sel = (i - 1) == cu
+        if sel then
+            glow(x0 + 4, y + 1, iw - 8, ITEM_H - 2, A.r, A.g, A.b, 170)
+            rect(x0 + 4, y + 1, iw - 8, ITEM_H - 2, A.r, A.g, A.b, 85)
+            rect(x0 + 4, y + 2, 2, ITEM_H - 4, A.r, A.g, A.b, 255)
+        end
+        text(x0 + 14, y + 7, it.label, sel and 0.35 or 0.33,
+             sel and 255 or 205, sel and 255 or 215, sel and 255 or 225)
+
+        if it.kind == 'toggle' then
+            local on = it.state
+            text(x0 + iw - 12, y + 8, on and '[ON]' or '[OFF]', 0.29,
+                 on and 52 or 140, on and 211 or 150, on and 153 or 170, true, wrap)
+        elseif it.kind == 'cycle' then
+            local cur = it.cfg.options[it.cfg.value]
+            text(x0 + iw - 12, y + 8, '< ' .. (cur and cur[1] or '') .. ' >', 0.28,
+                 120, 180, 255, true, wrap)
+        elseif it.kind == 'list' then
+            text(x0 + iw - 12, y + 8, '>>', 0.29, 120, 180, 255, true, wrap)
+        elseif it.kind == 'action' then
+            text(x0 + iw - 12, y + 8, '>>', 0.29, 205, 215, 230, true, wrap)
+        end
+    end
+    -- indicador de scroll
+    if sc + maxRows < #items then
+        local y = y0 + maxRows * ITEM_H - 14
+        text(x0 + iw - 12, y, 'v', 0.30, A.r, A.g, A.b, true, wrap)
+    end
 end
 
 local function drawUI()
     if not Menu.open then return end
     local resW, resH = GetActiveScreenResolution()
-    local x0 = resW / 2 - MENU_W / 2
-    local y0 = 90
+    local x0 = math.floor(resW / 2 - TOTAL_W / 2)
+    local y0 = math.floor(resH * 0.16)
 
-    if Menu.modal then
-        drawMenu(x0, y0, Menu.modal.items, Menu.modal.title, Menu.modal.scroll, Menu.modal.cursor)
-        return
+    local modal = Menu.modal
+    local items = modal and modal.items or Menu.categories[Menu.catIdx].items
+    local title = modal and modal.title or Menu.categories[Menu.catIdx].name
+
+    local maxRows = math.min(C.maxVisible, #items)
+    local bodyH = math.max(maxRows * ITEM_H, #Menu.categories * CAT_H)
+    local H = HEAD_H + bodyH + FOOT_H
+
+    -- sombra + fundo
+    rect(x0 - 3, y0 - 3, TOTAL_W + 6, H + 6, 0, 0, 0, 130)
+    rect(x0, y0, TOTAL_W, H, 5, 8, 16, 237)
+
+    drawHeader(x0, y0, title, TOTAL_W)
+
+    -- painel esquerdo (categorias)
+    if modal then
+        rect(x0, y0 + HEAD_H, LEFT_W, bodyH, 8, 11, 20, 130)
+        text(x0 + 12, y0 + HEAD_H + 12, 'SUBMENU', 0.30, 120, 134, 156)
+        text(x0 + 12, y0 + HEAD_H + 30, title:upper(), 0.34, 255, 255, 255)
+    else
+        drawCatPanel(x0, y0 + HEAD_H, bodyH)
     end
-    drawMenu(x0, y0, Menu.categories[Menu.catIdx].items, Menu.categories[Menu.catIdx].name,
-             Menu.scroll, Menu.cursor)
+
+    -- separador
+    rect(x0 + LEFT_W, y0 + HEAD_H, 2, bodyH, A.r, A.g, A.b, 45)
+
+    -- itens
+    drawItems(x0 + LEFT_W, y0 + HEAD_H, items,
+              modal and modal.scroll or Menu.scroll,
+              modal and modal.cursor or Menu.cursor, RIGHT_W)
+
+    -- rodape
+    rect(x0, y0 + H - FOOT_H, TOTAL_W, FOOT_H, 6, 9, 17, 240)
+    text(x0 + 12, y0 + H - FOOT_H + 6, 'SETAS / ENTER / BACKSPACE', 0.26, 130, 144, 165)
+    text(x0 + TOTAL_W - 12, y0 + H - FOOT_H + 6,
+         #items .. ' ITEM(S)', 0.26, 130, 144, 165, true, { x0, x0 + TOTAL_W - 12 })
 end
 
 -- ----------------------------------------------------------------- open
