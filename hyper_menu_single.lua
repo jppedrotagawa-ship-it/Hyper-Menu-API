@@ -1,3 +1,17 @@
+﻿-- ===========================================================================
+--  CONFIG EMBUTIDA (arquivo unico - nao precisa de config.lua)
+-- ===========================================================================
+HyperMenuConfig = {
+    menuKey = 'F9',          -- tecla que abre/fecha
+    openWithScroll = true,   -- abre com o scroll do mouse
+    accent      = { r = 56, g = 189, b = 248 },
+    maxVisible  = 12,
+    aimRange    = 120.0,
+    aimFov      = 60,
+    aimKey      = 'G',
+    localVersion = '3.0.3',
+}
+
 -- ===========================================================================
 --  Hyper Menu (Lua) - menu classico desenhado no jogo (estilo Shark)
 --
@@ -11,23 +25,43 @@ HyperMenu = {}
 local C = HyperMenuConfig
 local A = C.accent
 
--- runtime textures: cantos redondos + icones das armas (PNG no resource)
-Assets = { txd = 'hypermenu_tx', ok = false }
+-- compatibilidade com executores de lua solto (FiveM / shims)
+local Runner
+if Citizen and Citizen.CreateThread then
+    Runner = function(fn) Citizen.CreateThread(fn) end
+elseif CreateThread then
+    Runner = function(fn) CreateThread(fn) end
+else
+    Runner = function(fn) fn() end
+end
 
-Citizen.CreateThread(function()
-    Citizen.Wait(1500)
+local function log(s)
+    if print then pcall(print, '[Hyper] ' .. tostring(s)) end
+end
+
+local function sleep(ms)
+    if Citizen and Citizen.Wait then sleep(ms) end
+end
+
+-- runtime textures: cantos redondos + icones das armas (PNG no resource)
+Assets = { txd = 'hypermenu_tx', ok = false, banner = false }
+
+Runner(function()
+    if Citizen and Citizen.Wait then sleep(1500) end
     local ok, txd = pcall(CreateRuntimeTxd, Assets.txd)
-    if not ok or not txd then print('[hyper] runtime txd falhou') return end
+    if not ok or not txd then return end
     local ok2 = pcall(CreateRuntimeTextureFromImage, txd, 'round', 'assets/round.png')
-    if not ok2 then print('[hyper] round.png nao carregou') return end
+    if not ok2 then return end
+    local ok3 = pcall(CreateRuntimeTextureFromImage, txd, 'banner', 'assets/banner.png')
+    if not ok3 then return end
     Assets.ok = true
+    Assets.banner = true
     for _, n in ipairs({ 'pistol', 'smg', 'assaultrifle', 'carbinerifle', 'sniperrifle',
                          'rpg', 'combatmg', 'knife', 'stungun', 'heavysniper',
                          'marksmanrifle', 'assaultsmg' }) do
         pcall(CreateRuntimeTextureFromImage, txd, 'w_' .. n,
               'assets/weapons/weapon_' .. n .. '.png')
     end
-    print('[hyper] assets carregados (redondo + icones)')
 end)
 
 -- ---------------------------------------------------------------- helpers
@@ -260,7 +294,7 @@ veiculo.items = {
                 local hash = GetHashKey(m[2])
                 RequestModel(hash)
                 local t = GetGameTimer()
-                while not HasModelLoaded(hash) and GetGameTimer() - t < 4000 do Citizen.Wait(10) end
+                while not HasModelLoaded(hash) and GetGameTimer() - t < 4000 do sleep(10) end
                 if HasModelLoaded(hash) then
                     local p = myPed()
                     local c = GetEntityCoords(p)
@@ -426,7 +460,7 @@ local function targetActions(pl)
             local hash = GetHashKey('zentorno')
             RequestModel(hash)
             local t = GetGameTimer()
-            while not HasModelLoaded(hash) and GetGameTimer() - t < 4000 do Citizen.Wait(10) end
+            while not HasModelLoaded(hash) and GetGameTimer() - t < 4000 do sleep(10) end
             if HasModelLoaded(hash) then
                 local c = GetEntityCoords(GetPlayerPed(pl))
                 local v = CreateVehicle(hash, c.x + 4.0, c.y, c.z, GetEntityHeading(GetPlayerPed(pl)), true, false)
@@ -472,7 +506,7 @@ diversos.items = {
                 end
             end
         end
-        Citizen.Wait(10)
+        sleep(10)
     end }),
     opt('Auto-Reparar', 'toggle', { key = 'autorep', loop = function(s)
         local v = myVeh()
@@ -480,7 +514,7 @@ diversos.items = {
             SetVehicleFixed(v)
             SetVehicleDirtLevel(v, 0.0)
         end
-        Citizen.Wait(200)
+        sleep(200)
     end }),
 }
 
@@ -542,7 +576,7 @@ local function selectItem(item)
         addLoop(cfg.key, item.state, cfg.loop)
         if item.state then
             if cfg.on then cfg.on(true) end
-            if cfg.loop then cfg.loop(true) Citizen.Wait(0) end
+            if cfg.loop then cfg.loop(true) sleep(0) end
         else
             if cfg.off then cfg.off() end
         end
@@ -745,37 +779,61 @@ local function drawUI()
 end
 
 -- ----------------------------------------------------------------- open
-RegisterCommand('+hypermenu', function()
-    setOpen(not Menu.open)
-end, false)
-RegisterKeyMapping('+hypermenu', 'Hyper Menu', 'keyboard', C.menuKey)
+if RegisterCommand then
+    pcall(function()
+        RegisterCommand('hypermenu', function(src, args, raw)
+            setOpen(not Menu.open)
+        end, false)
+        RegisterCommand('+hypermenu', function()
+            setOpen(not Menu.open)
+        end, false)
+    end)
+end
+if RegisterKeyMapping then
+    pcall(function()
+        RegisterKeyMapping('+hypermenu', 'Hyper Menu', 'keyboard', C.menuKey)
+    end)
+end
 
 -- update thread: loops ativos + navegacao + draw
-Citizen.CreateThread(function()
-    local blink = 0
+Runner(function()
+    if not (Citizen and Citizen.Wait) then return end
     while true do
-        Citizen.Wait(0)
-        if Menu.open then
-            for _, id in pairs(Controls) do DisableControlAction(0, id, true) end
-            DisableControlAction(0, WheelUp, true)
-            DisableControlAction(0, WheelDown, true)
-            readInput()
-            navigate()
-            drawUI()
-        elseif C.openWithScroll then
-            -- aba com o scroll do mouse (como menus injetados classicos)
-            if IsControlJustPressed(0, WheelUp) or IsControlJustPressed(2, WheelUp)
-               or IsControlJustPressed(0, WheelDown) or IsControlJustPressed(2, WheelDown) then
-                setOpen(true)
+        if Citizen and Citizen.Wait then sleep(0) end
+        pcall(function()
+            if Menu.open then
+                if Controls then
+                    local ok, err = pcall(function()
+                        for _, id in pairs(Controls) do DisableControlAction(0, id, true) end
+                        DisableControlAction(0, WheelUp, true)
+                        DisableControlAction(0, WheelDown, true)
+                    end)
+                    if not ok and not _hyperWarnedControls then
+                        _hyperWarnedControls = true
+                        log(err)
+                    end
+                end
+                readInput()
+                navigate()
+                drawUI()
+            elseif C.openWithScroll then
+                -- aba com o scroll do mouse (como menus injetados classicos)
+                if IsControlJustPressed(0, WheelUp) or IsControlJustPressed(2, WheelUp)
+                   or IsControlJustPressed(0, WheelDown) or IsControlJustPressed(2, WheelDown) then
+                    setOpen(true)
+                end
             end
-        end
-        for _, l in pairs(Menu.loops) do
-            if l.active and l.fn then l.fn(true) end
-        end
+            for _, l in pairs(Menu.loops) do
+                if l.active and l.fn then l.fn(true) end
+            end
+        end)
     end
 end)
 
-Citizen.CreateThread(function()
-    Citizen.Wait(2500)
-    notify('carregado - role o mouse ou aperte ' .. C.menuKey .. ' para abrir')
+Runner(function()
+    pcall(function()
+        if Citizen and Citizen.Wait then sleep(2500) end
+        local ok, err = pcall(notify, 'carregado - role o mouse ou aperte ' .. C.menuKey .. ' para abrir')
+        if not ok then log(err) end
+    end)
 end)

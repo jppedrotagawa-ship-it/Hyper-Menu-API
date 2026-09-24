@@ -1,5 +1,5 @@
--- ===========================================================================
---  Hyper Menu (Lua) - configuração
+﻿-- ===========================================================================
+--  Hyper Menu (Lua) - configuraÃ§Ã£o
 -- ===========================================================================
 
 HyperMenuConfig = {}
@@ -17,8 +17,11 @@ HyperMenuConfig.github = {
     branch = 'main',                  -- branch com os arquivos
     token  = nil,                     -- opcional: teu token (aumenta o limite da API)
     checkUpdate = true,               -- true = verifica release nova ao iniciar
-    currentVersion = '3.0.2'          -- usada na comparacao de versao
+    currentVersion = '3.0.3'          -- usada na comparacao de versao
 }
+
+-- versao exibida no banner (mantida em sincronia com a release)
+HyperMenuConfig.localVersion = '3.0.3'
 
 -- visor
 HyperMenuConfig.accent = { r = 56, g = 189, b = 248 }
