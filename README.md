@@ -1,72 +1,92 @@
-# Hyper-Menu-API
+# Hyper Menu (Lua) - versao "Shark" classica
 
-API do GitHub + menu clássico em Lua (sem NUI), estilo Shark Menu V5.
+Menu desenhado no jogo (sem NUI), com modulo de API do GitHub para updates/share de configs.
 
-Recurso FiveM: menu desenhado no jogo que abre com o scroll do mouse
-(ou F9). A API consulta releases/arquivos deste repositório.
-
-## Arquivos
+## Estrutura
 
 ```
-Hyper-Menu-API/
+menu-lua/
 ├── fxmanifest.lua
-├── config.lua            <- owner/repo/branch, tecla, aimbot, accent
+├── config.lua
 └── client/
-    ├── github_api.lua    <- modulo GitHub (latest release / raw file / update check)
-    └── hyper_menu.lua    <- menu completo
+    ├── github_api.lua   <- modulo GitHub (API/raw/releases)
+    └── hyper_menu.lua   <- menu completo
 ```
 
 ## Como usar
 
-1. Copie a pasta para `resources/[local]/hyper-menu-api` no servidor.
-2. `ensure hyper-menu-api`.
-3. Role o scroll do mouse (ou F9) para abrir o menu.
+1. Copie a pasta `menu-lua` para `resources/[local]/hyper-menu-lua` no teu servidor.
+2. `ensure hyper-menu-lua` (ou `start hyper-menu-lua`).
+3. **Role o scroll do mouse para abrir** (o executor injeta e o menu abre). O F9 (`HyperMenuConfig.menuKey`) também abre/fecha como alternativa. Feche com F9 ou BACKSPACE.
 
-## Opcoes do menu
+## Configuracao (config.lua)
 
-- **Locais**: Godmode, Invisivel, Sem Ragdoll, Stamina Infinita, Super Velocidade, Curar, Colete, Limpar Visual
-- **Arma**: Municao Infinita / Explosiva / Incendiaria, Pistola, SMG, Fuzil, Sniper, RPG, Todas as Armas, Remover
-- **Veiculo**: Reparar, Ligar Motor, Pneus Blindados, Tuning Maximo, Lavar, Velocidade Maxima, Apagar, Spawnar
-- **Teleporte**: Waypoint, Hotspots, Jogador mais proximo
-- **Visual**: Tempo, Horario, Congelar Tempo
-- **Jogadores**: acoes em grupo + submenu por jogador (trazer, matar, explodir, congelar, dar carro)
-- **Diversos**: Aimbot, Auto-Reparar
+| Chave | Descricao |
+|---|---|
+| `menuKey` | tecla que abre/fecha o menu (F9) |
+| `github.owner` | teu usuario do GitHub |
+| `github.repo` | nome do repositorio |
+| `github.branch` | branch dos arquivos (main) |
+| `github.token` | token opcional (aumenta limite da API de 60/h para 5000/h) |
+| `github.checkUpdate` | checa release nova no start |
+| `accent` | cor RGB do menu |
+| `aimRange` / `aimFov` | alcance e angulo do aimbot |
 
 ## API do GitHub (client/github_api.lua)
 
-Configura em `config.lua`:
+Se o `owner` for o placeholder `SEU_USUARIO`, a API responde erro avisando pra configurar.
 
 ```lua
-HyperMenuConfig.github = {
-    owner  = 'jppedrotagawa-ship-it',
-    repo   = 'Hyper-Menu-API',
-    branch = 'main',
-    token  = nil,          -- opcional: teu token (aumenta limite de 60/h para 5000/h)
-    checkUpdate = true,
-    currentVersion = '3.0.0'
-}
+-- tag da ultima release (ex.: "v1.2.3"); cb(nil) se falhar
+GitHubApi:getLatestRelease(function(tag) print(tag) end)
+
+-- conteudo bruto de qualquer arquivo do repo
+GitHubApi:getFile('config.json', function(content) ... end)
+
+-- verifica se a versao atual e menor que a do repo
+GitHubApi:checkUpdate('1.0.0', function(remoteTag, isNewer) ... end)
+
+-- GET generico: cb(ok, body)
+GitHubApi:get('https://raw.githubusercontent.com/...', function(ok, body) end)
 ```
 
-```lua
-GitHubApi:getLatestRelease(function(tag) end)      -- tag da ultima release, ex. "v3.0.0"
-GitHubApi:getFile('config.lua', function(c) end)   -- conteudo bruto de um arquivo
-GitHubApi:checkUpdate('3.0.0', function(tag, novo) end)
-GitHubApi:get(url, function(ok, body) end)         -- GET generico
-```
+Depois de criar teu repo e so fazer a release (tag `v1.0.0`+). O `checkUpdate` já está ligado atrás do botão *Diversos* (via notificação no start).
 
-Com o `checkUpdate = true`, o menu notifica no start se existir release
-mais nova que a atual. Para isso, crie uma release com tag `v3.0.0`+.
+## Opcoes do menu
 
-## Releases
+**Locais** - Godmode, Invisivel, Sem Ragdoll, Stamina Infinita, Super Velocidade, Curar, Colete, Limpar Visual
 
-Cada atualizacao = nova release no GitHub. O menu avisa quando estiver
-desatualizado.
+**Arma** - Municao Infinita / Explosiva / Incendiaria, Pistola, SMG, Fuzil de Assalto, Sniper, RPG, Todas as Armas, Remover Armas
+
+**Veiculo** - Reparar, Ligar Motor, Pneus Blindados, Tuning Maximo, Lavar, Velocidade Maxima, Apagar Veiculo, Spawnar Veiculo
+
+**Teleporte** - Teleporte ao Waypoint, Hotspots, Para o Jogador mais Proximo
+
+**Visual** - Tempo (ciclo), Horario (ciclo), Congelar Tempo
+
+**Jogadores** - Todos: Matar / Explodir / Para Mim; por jogador: Teleportar ate, Trazer, Matar, Explodir, Congelar, Descongelar, Dar Carro
+
+**Diversos** - Aimbot, Auto-Reparar
 
 ## Navegacao
 
-- Scroll do mouse: abre o menu e rola os itens
-- Setas esquerda/direita: troca categoria
+- Scroll do mouse (ou F9): abre o menu
+- Scroll do mouse: rola os itens (cima/baixo)
+- Setas esquerda/direita: troca de categoria
 - Setas cima/baixo: rola os itens
-- ENTER: ativa item
-- BACKSPACE: volta ou fecha
-- F9: abre/fecha
+- ENTER: ativa o item
+- BACKSPACE: volta (no submenu) ou fecha o menu
+- F9: fecha o menu
+
+## Criar o repositorio (pra usar a API)
+
+```bash
+git init
+git add .
+git commit -m "Hyper Menu Lua"
+git branch -M main
+git remote add origin https://github.com/SEU_USUARIO/hyper-menu.git
+git push -u origin main
+```
+
+Depois crie uma release pela pagina do repo (Tags -> release, tag `v1.0.0`).

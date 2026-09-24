@@ -11,6 +11,25 @@ HyperMenu = {}
 local C = HyperMenuConfig
 local A = C.accent
 
+-- runtime textures: cantos redondos + icones das armas (PNG no resource)
+Assets = { txd = 'hypermenu_tx', ok = false }
+
+Citizen.CreateThread(function()
+    Citizen.Wait(1500)
+    local ok, txd = pcall(CreateRuntimeTxd, Assets.txd)
+    if not ok or not txd then print('[hyper] runtime txd falhou') return end
+    local ok2 = pcall(CreateRuntimeTextureFromImage, txd, 'round', 'assets/round.png')
+    if not ok2 then print('[hyper] round.png nao carregou') return end
+    Assets.ok = true
+    for _, n in ipairs({ 'pistol', 'smg', 'assaultrifle', 'carbinerifle', 'sniperrifle',
+                         'rpg', 'combatmg', 'knife', 'stungun', 'heavysniper',
+                         'marksmanrifle', 'assaultsmg' }) do
+        pcall(CreateRuntimeTextureFromImage, txd, 'w_' .. n,
+              'assets/weapons/weapon_' .. n .. '.png')
+    end
+    print('[hyper] assets carregados (redondo + icones)')
+end)
+
 -- ---------------------------------------------------------------- helpers
 local function myPed() return PlayerPedId() end
 local function inVeh() return IsPedInAnyVehicle(myPed(), false) end
@@ -135,22 +154,32 @@ arma.items = {
     opt('Municao Incendiaria', 'toggle', { key = 'fire', loop = function(s)
         SetFireAmmoThisFrame(myPed(), true)
     end }),
-    opt('Pistola', 'action', { run = function()
-        GiveWeaponToPed(myPed(), GetHashKey('WEAPON_PISTOL'), 9999, false, true)
+    opt('Pistola', 'action', { icon = 'pistol', run = function()
+        local p = myPed()
+        GiveWeaponToPed(p, GetHashKey('WEAPON_PISTOL'), 9999, false, true)
+        notify('Pistola')
     end }),
-    opt('SMG', 'action', { run = function()
-        GiveWeaponToPed(myPed(), GetHashKey('WEAPON_SMG'), 9999, false, true)
+    opt('SMG', 'action', { icon = 'smg', run = function()
+        local p = myPed()
+        GiveWeaponToPed(p, GetHashKey('WEAPON_SMG'), 9999, false, true)
+        notify('SMG')
     end }),
-    opt('Fuzil de Assalto', 'action', { run = function()
-        GiveWeaponToPed(myPed(), GetHashKey('WEAPON_ASSAULTRIFLE'), 9999, false, true)
+    opt('Fuzil de Assalto', 'action', { icon = 'assaultrifle', run = function()
+        local p = myPed()
+        GiveWeaponToPed(p, GetHashKey('WEAPON_ASSAULTRIFLE'), 9999, false, true)
+        notify('Fuzil de Assalto')
     end }),
-    opt('Sniper', 'action', { run = function()
-        GiveWeaponToPed(myPed(), GetHashKey('WEAPON_SNIPERRIFLE'), 9999, false, true)
+    opt('Sniper', 'action', { icon = 'sniperrifle', run = function()
+        local p = myPed()
+        GiveWeaponToPed(p, GetHashKey('WEAPON_SNIPERRIFLE'), 9999, false, true)
+        notify('Sniper')
     end }),
-    opt('RPG', 'action', { run = function()
-        GiveWeaponToPed(myPed(), GetHashKey('WEAPON_RPG'), 9999, false, true)
+    opt('RPG', 'action', { icon = 'rpg', run = function()
+        local p = myPed()
+        GiveWeaponToPed(p, GetHashKey('WEAPON_RPG'), 9999, false, true)
+        notify('RPG')
     end }),
-    opt('Todas as Armas', 'action', { run = function()
+    opt('Todas as Armas', 'action', { icon = 'carbinerifle', run = function()
         local p = myPed()
         for _, w in ipairs({ 'WEAPON_PISTOL', 'WEAPON_SMG', 'WEAPON_ASSAULTRIFLE',
                              'WEAPON_SNIPERRIFLE', 'WEAPON_RPG', 'WEAPON_COMBATMG',
@@ -577,6 +606,21 @@ local function rect(x, y, w, h, r, g, b, a)
     DrawRect(x + w / 2, y + h / 2, w, h, r, g, b, a)
 end
 
+-- retangulo com cantos arredondados (sprite runtime); fallback em rect
+local function srect(x, y, w, h, r, g, b, a)
+    if not Assets.ok then
+        rect(x, y, w, h, r, g, b, a)
+        return
+    end
+    DrawSprite(Assets.txd, 'round', x + w / 2, y + h / 2, w, h, 0.0, r, g, b, a)
+end
+
+-- icone de arma (png)
+local function icon(x, y, s, id)
+    if not Assets.ok or not id then return end
+    DrawSprite(Assets.txd, 'w_' .. id, x + s / 2, y + s / 2, s, s, 0.0, 255, 255, 255, 255)
+end
+
 local function text(x, y, s, scale, r, g, b, right, wrap)
     SetTextFont(4)
     SetTextProportional(1)
@@ -605,7 +649,7 @@ local function glow(x, y, w, h, r, g, b, a)
 end
 
 local function drawHeader(x0, y0, title, w)
-    rect(x0, y0, w, HEAD_H, 9, 12, 22, 248)
+    srect(x0, y0, w, HEAD_H, 9, 12, 22, 250)
     -- borda accent com pulso
     local p = 0.55 + 0.45 * math.sin(GetGameTimer() / 420)
     rect(x0, y0 + HEAD_H - 3, w, 3, A.r, A.g, A.b, math.floor(150 + 105 * p))
@@ -616,13 +660,12 @@ local function drawHeader(x0, y0, title, w)
 end
 
 local function drawCatPanel(x0, y0, h)
-    rect(x0, y0, LEFT_W, h, 8, 11, 20, 235)
+    srect(x0, y0, LEFT_W, h, 8, 11, 20, 235)
     for i, cat in ipairs(Menu.categories) do
         local y = y0 + (i - 1) * CAT_H
         local sel = i == Menu.catIdx
         if sel then
-            rect(x0, y, LEFT_W, CAT_H, A.r, A.g, A.b, 55)
-            rect(x0, y, 3, CAT_H, A.r, A.g, A.b, 255)
+            srect(x0 + 3, y + 2, LEFT_W - 6, CAT_H - 4, A.r, A.g, A.b, 60)
             text(x0 + 12, y + 7, cat.name, 0.31, 255, 255, 255)
         else
             text(x0 + 12, y + 7, cat.name, 0.31, 138, 150, 170)
@@ -641,10 +684,14 @@ local function drawItems(x0, y0, items, sc, cu, iw)
         local sel = (i - 1) == cu
         if sel then
             glow(x0 + 4, y + 1, iw - 8, ITEM_H - 2, A.r, A.g, A.b, 170)
-            rect(x0 + 4, y + 1, iw - 8, ITEM_H - 2, A.r, A.g, A.b, 85)
-            rect(x0 + 4, y + 2, 2, ITEM_H - 4, A.r, A.g, A.b, 255)
+            srect(x0 + 4, y + 1, iw - 8, ITEM_H - 2, A.r, A.g, A.b, 90)
         end
-        text(x0 + 14, y + 7, it.label, sel and 0.35 or 0.33,
+        local lx = x0 + 14
+        if it.cfg.icon then
+            icon(x0 + 12, y + 4, 26, it.cfg.icon)
+            lx = x0 + 46
+        end
+        text(lx, y + 7, it.label, sel and 0.35 or 0.33,
              sel and 255 or 205, sel and 255 or 215, sel and 255 or 225)
 
         if it.kind == 'toggle' then
@@ -684,13 +731,13 @@ local function drawUI()
 
     -- sombra + fundo
     rect(x0 - 3, y0 - 3, TOTAL_W + 6, H + 6, 0, 0, 0, 130)
-    rect(x0, y0, TOTAL_W, H, 5, 8, 16, 237)
+    srect(x0, y0, TOTAL_W, H, 5, 8, 16, 237)
 
     drawHeader(x0, y0, title, TOTAL_W)
 
     -- painel esquerdo (categorias)
     if modal then
-        rect(x0, y0 + HEAD_H, LEFT_W, bodyH, 8, 11, 20, 130)
+        srect(x0, y0 + HEAD_H, LEFT_W, bodyH, 8, 11, 20, 130)
         text(x0 + 12, y0 + HEAD_H + 12, 'SUBMENU', 0.30, 120, 134, 156)
         text(x0 + 12, y0 + HEAD_H + 30, title:upper(), 0.34, 255, 255, 255)
     else
@@ -706,7 +753,7 @@ local function drawUI()
               modal and modal.cursor or Menu.cursor, RIGHT_W)
 
     -- rodape
-    rect(x0, y0 + H - FOOT_H, TOTAL_W, FOOT_H, 6, 9, 17, 240)
+    srect(x0, y0 + H - FOOT_H, TOTAL_W, FOOT_H, 6, 9, 17, 240)
     text(x0 + 12, y0 + H - FOOT_H + 6, 'SETAS / ENTER / BACKSPACE', 0.26, 130, 144, 165)
     text(x0 + TOTAL_W - 12, y0 + H - FOOT_H + 6,
          #items .. ' ITEM(S)', 0.26, 130, 144, 165, true, { x0, x0 + TOTAL_W - 12 })

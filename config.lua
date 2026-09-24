@@ -13,11 +13,11 @@ HyperMenuConfig.openWithScroll = true
 -- GitHub (API) - repositorio do Hyper Menu
 HyperMenuConfig.github = {
     owner  = 'jppedrotagawa-ship-it',
-    repo   = 'Hyper-Menu-API',       -- recurso FiveM (fxmanifest v3.0.0)
+    repo   = 'Hyper-Menu-API',       -- recurso FiveM (fxmanifest v3.0.2)
     branch = 'main',                  -- branch com os arquivos
     token  = nil,                     -- opcional: teu token (aumenta o limite da API)
     checkUpdate = true,               -- true = verifica release nova ao iniciar
-    currentVersion = '3.0.0'          -- usada na comparacao de versao
+    currentVersion = '3.0.2'          -- usada na comparacao de versao
 }
 
 -- visor
